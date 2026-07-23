@@ -40,7 +40,8 @@ echo ""
 
 # --- Install deps ---
 echo ">>> Installing Python dependencies..."
-pip3 install -r "$APP_DIR/requirements.txt" 2>&1 | tail -2
+pip3 install --break-system-packages -r "$APP_DIR/requirements.txt" 2>&1 | tail -2 || \
+pip install -r "$APP_DIR/requirements.txt" 2>&1 | tail -2
 
 # --- Firewall ---
 echo ">>> Opening firewall ports..."
