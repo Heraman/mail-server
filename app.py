@@ -243,11 +243,14 @@ def cleanup_loop():
         except Exception as e:
             print(f'Cleanup error: {e}', flush=True)
 
+# --- Startup (always runs) ---
+
+init_db()
+cleanup_expired()
+
 # --- Main ---
 
 if __name__ == '__main__':
-    init_db()
-    cleanup_expired()
 
     cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True)
     cleanup_thread.start()
