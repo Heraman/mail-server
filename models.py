@@ -93,14 +93,22 @@ def verify_user(username, password):
     user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
     conn.close()
     if user and check_password_hash(user['password'], password):
-        return user
+        return dict(user)
     return None
+
+def get_user_by_id(user_id):
+    if not user_id:
+        return None
+    conn = get_db()
+    user = conn.execute('SELECT * FROM users WHERE id=?', (user_id,)).fetchone()
+    conn.close()
+    return dict(user) if user else None
 
 def get_all_users():
     conn = get_db()
-    users = conn.execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
+    rows = conn.execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
     conn.close()
-    return users
+    return [dict(r) for r in rows]
 
 def activate_user(user_id, days=30):
     conn = get_db()
@@ -118,11 +126,12 @@ def deactivate_user(user_id):
 def is_user_active(user):
     if not user:
         return False
-    if user.get('is_admin'):
+    u = dict(user)
+    if u.get('is_admin'):
         return True
-    if not user.get('is_active'):
+    if not u.get('is_active'):
         return False
-    expires_at = user.get('expires_at')
+    expires_at = u.get('expires_at')
     if expires_at:
         try:
             if datetime.fromisoformat(expires_at) < datetime.utcnow():

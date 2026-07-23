@@ -22,9 +22,12 @@ def login_required(f):
 def active_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not flask_session.get('is_active'):
+        user = get_user_by_id(flask_session.get('user_id'))
+        if not user or not is_user_active(user):
+            flask_session['is_active'] = False
             flash('Account inactive. Contact admin to activate.')
             return redirect(url_for('inactive'))
+        flask_session['is_active'] = True
         return f(*args, **kwargs)
     return decorated
 
@@ -57,7 +60,7 @@ def login():
         if user:
             flask_session['user_id'] = user['id']
             flask_session['username'] = user['username']
-            flask_session['is_admin'] = bool(user.get('is_admin'))
+            flask_session['is_admin'] = bool(user.get('is_admin', 0))
             flask_session['is_active'] = is_user_active(user)
             return redirect(url_for('domains'))
         flash('Invalid username or password')
