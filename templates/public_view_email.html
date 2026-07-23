@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ email.subject or '(No Subject)' }} - TempMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="public-layout">
+        <header class="public-header">
+            <h1>TempMail</h1>
+            <div class="public-addr">{{ inbox.address }}@{{ inbox.domain }}</div>
+            <a href="{{ url_for('public_inbox', token=inbox.public_token) }}" class="btn">Back to Inbox</a>
+        </header>
+        <main class="public-main">
+            <div class="email-view-header">
+                <h1>{{ email.subject or '(No Subject)' }}</h1>
+                <div class="meta">
+                    <p><strong>From:</strong> {{ email.sender }}</p>
+                    <p><strong>Date:</strong> {{ email.received_at }}</p>
+                </div>
+            </div>
+            <div class="email-body public-html-body">
+                {% if email.body_html %}
+                    {{ email.body_html|safe }}
+                {% else %}
+                    <pre>{{ email.body_text }}</pre>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

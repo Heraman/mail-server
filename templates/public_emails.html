@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ inbox.address }}@{{ inbox.domain }} - TempMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta http-equiv="refresh" content="15">
+</head>
+<body>
+    <div class="public-layout">
+        <header class="public-header">
+            <h1>TempMail</h1>
+            <div class="public-addr">{{ inbox.address }}@{{ inbox.domain }}</div>
+            <div class="public-meta">Expires: {{ inbox.expires_at }}</div>
+            <button onclick="location.reload()" class="btn">Refresh</button>
+        </header>
+        <main class="public-main">
+            {% if emails %}
+                <table class="data-table">
+                    <thead>
+                        <tr><th>From</th><th>Subject</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for e in emails %}
+                        <tr class="{% if not e.is_read %}unread{% endif %}">
+                            <td>{{ e.sender }}</td>
+                            <td><a href="{{ url_for('public_view_email', token=inbox.public_token, email_id=e.id) }}">{{ e.subject or '(No Subject)' }}</a></td>
+                            <td>{{ e.received_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="?page={{ page - 1 }}">Previous</a>
+                    {% endif %}
+                    <span>Page {{ page }}</span>
+                    {% if page * 50 < total %}
+                        <a href="?page={{ page + 1 }}">Next</a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="empty">
+                    <p>Waiting for emails...</p>
+                    <p class="small">This page auto-refreshes every 15 seconds.</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

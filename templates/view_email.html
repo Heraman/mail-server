@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ email.subject or '(No Subject)' }} - TempMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <h2>TempMail</h2>
+            <div class="user-info">{{ session.username }}</div>
+            <ul class="nav-list">
+                <li><a href="{{ url_for('domains') }}">Domains</a></li>
+                <li><a href="{{ url_for('inboxes') }}">Inboxes</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        <main class="main">
+            <div class="email-view-header">
+                <h1>{{ email.subject or '(No Subject)' }}</h1>
+                <div class="meta">
+                    <p><strong>From:</strong> {{ email.sender }}</p>
+                    <p><strong>Date:</strong> {{ email.received_at }}</p>
+                </div>
+            </div>
+            <div class="email-body">
+                {% if email.body_html %}
+                    {{ email.body_html|safe }}
+                {% else %}
+                    <pre>{{ email.body_text }}</pre>
+                {% endif %}
+            </div>
+            <div class="actions">
+                <a href="javascript:history.back()" class="btn">Back</a>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

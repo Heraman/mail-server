@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ full_email(inbox) }} - TempMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <h2>TempMail</h2>
+            <div class="user-info">{{ session.username }}</div>
+            <ul class="nav-list">
+                <li><a href="{{ url_for('domains') }}">Domains</a></li>
+                <li><a href="{{ url_for('inboxes') }}">Inboxes</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        <main class="main">
+            <div class="toolbar">
+                <h1>{{ full_email(inbox) }}</h1>
+                <div class="toolbar-actions">
+                    <button onclick="location.reload()" class="btn">Refresh</button>
+                    <a href="{{ url_for('inboxes') }}" class="btn">Back to Inboxes</a>
+                </div>
+            </div>
+            <div class="meta-info">
+                Created: {{ inbox.created_at }} | Expires: {{ inbox.expires_at }}
+                | <a href="{{ url_for('public_inbox', token=inbox.public_token) }}" target="_blank">Public Link</a>
+            </div>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+            {% endwith %}
+            {% if emails %}
+                <table class="data-table">
+                    <thead>
+                        <tr><th>From</th><th>Subject</th><th>Date</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for e in emails %}
+                        <tr class="{% if not e.is_read %}unread{% endif %}">
+                            <td>{{ e.sender }}</td>
+                            <td><a href="{{ url_for('view_email', email_id=e.id) }}">{{ e.subject or '(No Subject)' }}</a></td>
+                            <td>{{ e.received_at }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('delete_email_route', email_id=e.id) }}" style="display:inline">
+                                    <input type="hidden" name="inbox_id" value="{{ inbox.id }}">
+                                    <button type="submit" class="btn-delete" onclick="return confirm('Delete this email?')">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="?page={{ page - 1 }}">Previous</a>
+                    {% endif %}
+                    <span>Page {{ page }}</span>
+                    {% if page * 50 < total %}
+                        <a href="?page={{ page + 1 }}">Next</a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="empty">No emails received yet. Send a test email to {{ full_email(inbox) }}.</div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inboxes - TempMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <h2>TempMail</h2>
+            <div class="user-info">{{ session.username }}</div>
+            <ul class="nav-list">
+                <li><a href="{{ url_for('domains') }}">Domains</a></li>
+                <li><a href="{{ url_for('inboxes') }}" class="active">Inboxes</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        <main class="main">
+            <div class="toolbar">
+                <h1>Inboxes</h1>
+            </div>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+            {% endwith %}
+            {% if domains %}
+            <div class="card">
+                <h3>Create New Inbox</h3>
+                <form method="POST" action="{{ url_for('create_inbox_route') }}" class="inline-form">
+                    <input type="text" name="address" placeholder="custom-name (or leave blank for random)">
+                    <select name="domain_id" required>
+                        <option value="">Select domain...</option>
+                        {% for d in domains %}
+                        <option value="{{ d.id }}">@{{ d.domain }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="days">
+                        <option value="1">1 day</option>
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                    </select>
+                    <button type="submit">Create Inbox</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="empty">Add a domain first before creating inboxes.</div>
+            {% endif %}
+            {% if inboxes %}
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Email Address</th><th>Created</th><th>Expires</th><th>Emails</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for i in inboxes %}
+                        <tr>
+                            <td><a href="{{ url_for('inbox_emails', inbox_id=i.id) }}">{{ full_email(i) }}</a>
+                                <button class="btn-copy" onclick="navigator.clipboard.writeText('{{ url_for('public_inbox', token=i.public_token, _external=True) }}');this.textContent='Copied!'" title="Copy public link">Copy Link</button>
+                            </td>
+                            <td>{{ i.created_at }}</td>
+                            <td>{{ i.expires_at }}</td>
+                            <td><a href="{{ url_for('inbox_emails', inbox_id=i.id) }}">View</a></td>
+                            <td>
+                                <form method="POST" action="{{ url_for('delete_inbox_route', inbox_id=i.id) }}" style="display:inline">
+                                    <button type="submit" class="btn-delete" onclick="return confirm('Delete this inbox and all its emails?')">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty">No inboxes yet.</div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>
