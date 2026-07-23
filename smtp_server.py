@@ -39,6 +39,10 @@ class MailHandler:
             else:
                 body_text = decode_payload(msg)
 
+        if not body_html and body_text.strip().startswith('<'):
+            body_html = body_text
+            body_text = ''
+
         delivered = 0
         for rcpt in envelope.rcpt_tos:
             inbox = get_inbox_by_email(rcpt.lower())

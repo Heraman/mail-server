@@ -24,6 +24,8 @@
             <div class="email-body public-html-body">
                 {% if email.body_html %}
                     {{ email.body_html|safe }}
+                {% elif email.body_text.strip().startswith('<') %}
+                    {{ email.body_text|safe }}
                 {% else %}
                     <pre>{{ email.body_text }}</pre>
                 {% endif %}
