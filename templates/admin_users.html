@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Users - TempMail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <h2>TempMail</h2>
+            <div class="user-info">{{ session.username }}</div>
+            <ul class="nav-list">
+                <li><a href="{{ url_for('domains') }}">Domains</a></li>
+                <li><a href="{{ url_for('inboxes') }}">Inboxes</a></li>
+                <li><a href="{{ url_for('admin_users') }}" class="active">Manage Users</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        <main class="main">
+            <div class="toolbar">
+                <h1>Manage Users</h1>
+            </div>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+            {% endwith %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th>Registered</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.username }}{% if u.is_admin %} (admin){% endif %}</td>
+                        <td>{% if u.is_admin %}Admin{% elif u.is_active %}Active{% else %}Inactive{% endif %}</td>
+                        <td>{{ u.expires_at or '-' }}</td>
+                        <td>{{ u.created_at }}</td>
+                        <td>
+                            {% if not u.is_admin %}
+                                {% if u.is_active %}
+                                    <form method="POST" action="{{ url_for('admin_deactivate', user_id=u.id) }}" style="display:inline">
+                                        <button type="submit" class="btn-delete">Deactivate</button>
+                                    </form>
+                                {% else %}
+                                    <form method="POST" action="{{ url_for('admin_activate', user_id=u.id) }}" style="display:inline">
+                                        <select name="days" style="font-size:0.8rem;padding:0.2rem">
+                                            <option value="1">1 day</option>
+                                            <option value="7">7 days</option>
+                                            <option value="30" selected>30 days</option>
+                                            <option value="90">90 days</option>
+                                            <option value="365">1 year</option>
+                                        </select>
+                                        <button type="submit" class="btn" style="padding:0.2rem 0.5rem;font-size:0.8rem">Activate</button>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </main>
+    </div>
+</body>
+</html>

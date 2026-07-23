@@ -1,22 +1,39 @@
 from flask import Flask, render_template, request, redirect, url_for, session as flask_session, flash, jsonify
 from functools import wraps
-import threading, time, sys
+import threading, time, sys, os
 from datetime import datetime
 
-import os
 from models import *
 from smtp_server import SMTPServer
 
 app = Flask(__name__)
 app.secret_key = 'change-this-to-a-random-secret-key'
 
-# --- Helpers ---
+# --- Decorators ---
 
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in flask_session:
             return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
+
+def active_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not flask_session.get('is_active'):
+            flash('Account inactive. Contact admin to activate.')
+            return redirect(url_for('inactive'))
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not flask_session.get('is_admin'):
+            flash('Admin only.')
+            return redirect(url_for('inboxes'))
         return f(*args, **kwargs)
     return decorated
 
@@ -40,6 +57,8 @@ def login():
         if user:
             flask_session['user_id'] = user['id']
             flask_session['username'] = user['username']
+            flask_session['is_admin'] = bool(user.get('is_admin'))
+            flask_session['is_active'] = is_user_active(user)
             return redirect(url_for('domains'))
         flash('Invalid username or password')
     return render_template('login.html')
@@ -50,7 +69,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
         if create_user(username, password):
-            flash('Registration successful. Please log in.')
+            flash('Registration successful. Admin will activate your account.')
             return redirect(url_for('login'))
         flash('Username already taken')
     return render_template('register.html')
@@ -60,16 +79,48 @@ def logout():
     flask_session.clear()
     return redirect(url_for('login'))
 
+@app.route('/inactive')
+def inactive():
+    return render_template('inactive.html')
+
+# --- Admin ---
+
+@app.route('/admin/users')
+@login_required
+@admin_required
+def admin_users():
+    users = get_all_users()
+    return render_template('admin_users.html', users=users)
+
+@app.route('/admin/users/<int:user_id>/activate', methods=['POST'])
+@login_required
+@admin_required
+def admin_activate(user_id):
+    days = int(request.form.get('days', 30))
+    activate_user(user_id, days)
+    flash(f'User activated for {days} days.')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def admin_deactivate(user_id):
+    deactivate_user(user_id)
+    flash('User deactivated.')
+    return redirect(url_for('admin_users'))
+
 # --- Domains ---
 
 @app.route('/domains')
 @login_required
 def domains():
     user_domains = get_domains(flask_session['user_id'])
-    return render_template('domains.html', domains=user_domains)
+    return render_template('domains.html', domains=user_domains,
+                           is_active=flask_session.get('is_active'))
 
 @app.route('/domains/add', methods=['POST'])
 @login_required
+@active_required
 def add_domain_route():
     domain = request.form.get('domain', '').strip().lower()
     if not domain:
@@ -83,6 +134,7 @@ def add_domain_route():
 
 @app.route('/domains/delete/<int:domain_id>', methods=['POST'])
 @login_required
+@active_required
 def delete_domain_route(domain_id):
     delete_domain(domain_id, flask_session['user_id'])
     flash('Domain deleted')
@@ -96,32 +148,30 @@ def inboxes():
     user_inboxes = get_inboxes(flask_session['user_id'])
     user_domains = get_domains(flask_session['user_id'])
     return render_template('inboxes.html', inboxes=user_inboxes, domains=user_domains,
-                           full_email=full_email)
+                           full_email=full_email, is_active=flask_session.get('is_active'))
 
 @app.route('/inboxes/create', methods=['POST'])
 @login_required
+@active_required
 def create_inbox_route():
     domain_id = request.form.get('domain_id')
     custom_address = request.form.get('address', '').strip().lower()
     days = int(request.form.get('days', 30))
-
     if not domain_id:
         flash('Select a domain')
         return redirect(url_for('inboxes'))
-
     address = custom_address or gen_random_address()
-
     inbox = create_inbox(address, domain_id, flask_session['user_id'], days)
     if inbox:
         public_url = url_for('public_inbox', token=inbox['public_token'], _external=True)
         flash(f'Inbox created: {address}@{inbox["domain"]} | Public: {public_url}')
     else:
         flash('Inbox address already exists for this domain')
-
     return redirect(url_for('inboxes'))
 
 @app.route('/inboxes/delete/<int:inbox_id>', methods=['POST'])
 @login_required
+@active_required
 def delete_inbox_route(inbox_id):
     delete_inbox(inbox_id, flask_session['user_id'])
     flash('Inbox deleted')

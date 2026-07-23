@@ -14,6 +14,7 @@
             <ul class="nav-list">
                 <li><a href="{{ url_for('domains') }}" class="active">Domains</a></li>
                 <li><a href="{{ url_for('inboxes') }}">Inboxes</a></li>
+                {% if session.is_admin %}<li><a href="{{ url_for('admin_users') }}">Manage Users</a></li>{% endif %}
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             </ul>
         </nav>
@@ -24,6 +25,9 @@
             {% with messages = get_flashed_messages() %}
                 {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
             {% endwith %}
+            {% if not is_active %}
+                <div class="flash" style="background:#fff3e0;color:#e65100">Account inactive. Contact admin to activate.</div>
+            {% endif %}
             <div class="card">
                 <form method="POST" action="{{ url_for('add_domain_route') }}" class="inline-form">
                     <input type="text" name="domain" placeholder="yourdomain.com" required>

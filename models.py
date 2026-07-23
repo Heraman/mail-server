@@ -17,6 +17,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 0,
+            expires_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS domains (
@@ -53,6 +56,11 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_emails_inbox ON emails(inbox_id);
         CREATE INDEX IF NOT EXISTS idx_inboxes_expires ON inboxes(expires_at);
     ''')
+    for col in ['is_admin', 'is_active', 'expires_at']:
+        try:
+            conn.execute(f'ALTER TABLE users ADD COLUMN {col} INTEGER' if col != 'expires_at' else f'ALTER TABLE users ADD COLUMN {col} TEXT')
+        except sqlite3.OperationalError:
+            pass
     try:
         conn.execute('ALTER TABLE inboxes ADD COLUMN public_token TEXT')
     except sqlite3.OperationalError:
@@ -69,8 +77,10 @@ def gen_random_address(length=10):
 def create_user(username, password):
     conn = get_db()
     try:
-        conn.execute('INSERT INTO users (username, password) VALUES (?, ?)',
-                     (username, generate_password_hash(password)))
+        first_user = conn.execute('SELECT COUNT(*) as c FROM users').fetchone()['c'] == 0
+        is_admin = 1 if first_user else 0
+        conn.execute('INSERT INTO users (username, password, is_admin, is_active) VALUES (?, ?, ?, ?)',
+                     (username, generate_password_hash(password), is_admin, is_admin))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -85,6 +95,41 @@ def verify_user(username, password):
     if user and check_password_hash(user['password'], password):
         return user
     return None
+
+def get_all_users():
+    conn = get_db()
+    users = conn.execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
+    conn.close()
+    return users
+
+def activate_user(user_id, days=30):
+    conn = get_db()
+    expires_at = (datetime.utcnow() + timedelta(days=days)).isoformat()
+    conn.execute('UPDATE users SET is_active=1, expires_at=? WHERE id=?', (expires_at, user_id))
+    conn.commit()
+    conn.close()
+
+def deactivate_user(user_id):
+    conn = get_db()
+    conn.execute('UPDATE users SET is_active=0, expires_at=NULL WHERE id=?', (user_id,))
+    conn.commit()
+    conn.close()
+
+def is_user_active(user):
+    if not user:
+        return False
+    if user.get('is_admin'):
+        return True
+    if not user.get('is_active'):
+        return False
+    expires_at = user.get('expires_at')
+    if expires_at:
+        try:
+            if datetime.fromisoformat(expires_at) < datetime.utcnow():
+                return False
+        except (ValueError, TypeError):
+            return False
+    return True
 
 # --- Domains ---
 
